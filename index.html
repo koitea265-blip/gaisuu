@@ -360,9 +360,6 @@
                     </div>
                 </div>
 
-                <!-- 3. Result Chart Panel (Removed based on user feedback) -->
-                <!-- No Chart Display for Steps 1-3. Step 4 follows suit for consistency. -->
-
             </div>
         </div>
     </section>
@@ -402,6 +399,7 @@
                 label: "どの位を四捨五入する？",
                 getOptions: () => [100000, 10000, 1000, 100, 10, 1],
                 getCheckPlace: (opt) => opt, 
+                showExtra: false,
                 problemTemplate: (opt) => `<span class="text-pink-600">${PLACES.find(p=>p.val===opt).label.replace("の位","")}の位</span>を<br>四捨五入します`,
                 getLookMessage: (checkLabel, checkDigit, opt) => `四捨五入する<br><span class="text-2xl font-black text-yellow-600">${checkLabel}の位</span>（${checkDigit}）を見るんだ！`
             },
@@ -409,6 +407,7 @@
                 label: "どの位までのがい数にする？",
                 getOptions: () => [1000000, 100000, 10000, 1000, 100, 10],
                 getCheckPlace: (opt) => opt / 10,
+                showExtra: false,
                 problemTemplate: (opt) => `<span class="text-pink-600">${PLACES.find(p=>p.val===opt).label.replace("の位","")}の位</span>までの<br>がい数にします`,
                 getLookMessage: (checkLabel, checkDigit, opt) => {
                     const targetLabel = PLACES.find(p=>p.val===opt).label.replace("の位","");
@@ -423,6 +422,7 @@
                     if (len <= opt) return 1;
                     return Math.pow(10, len - opt - 1);
                 },
+                showExtra: false,
                 problemTemplate: (opt) => `上から<span class="text-pink-600">${opt}けた</span>の<br>がい数にします`,
                 getLookMessage: (checkLabel, checkDigit, opt) => `上から${opt}けたのがい数にするから<br>${opt+1}けた目の<span class="text-2xl font-black text-yellow-600">${checkLabel}の位</span>（${checkDigit}）を見るんだ！`
             },
@@ -438,6 +438,7 @@
                     return opts.length > 0 ? opts : [10000, 1000, 100]; 
                 },
                 getCheckPlace: (opt) => opt / 10,
+                showExtra: false,
                 problemTemplate: (opt) => {
                     const methodText = state.method === 'floor' ? '切り捨て' : '切り上げ';
                     return `<span class="text-pink-600">${PLACES.find(p=>p.val===opt).label.replace("の位","")}の位</span>までで<br>${methodText}します`;
@@ -451,7 +452,6 @@
         // --- Init ---
         window.addEventListener('DOMContentLoaded', () => {
             renderGridsStructure();
-            // Start at Cover
             showCover();
 
             const input = document.getElementById('inputNumber');
@@ -496,9 +496,9 @@
             [1,2,3,4].forEach(i => {
                 const el = document.getElementById(`tab-${i}`);
                 if (i === n) {
-                    el.className = "step-tab whitespace-nowrap active";
+                    el.className = "step-tab px-6 whitespace-nowrap active";
                 } else {
-                    el.className = "step-tab whitespace-nowrap inactive";
+                    el.className = "step-tab px-6 whitespace-nowrap inactive";
                 }
             });
             
@@ -508,7 +508,6 @@
             if (n === 4) methodSel.classList.remove('hidden');
             else methodSel.classList.add('hidden');
 
-            // Init options
             const opts = (n === 4) ? tabs[n].getOptions(state.inputNumber) : tabs[n].getOptions();
             if (n === 3) state.selectedOption = 2;
             else if (n === 4) state.selectedOption = opts[0];
@@ -521,7 +520,6 @@
         function updateMethod() {
             const radios = document.getElementsByName('method');
             for (const r of radios) { if(r.checked) state.method = r.value; }
-            // Re-render problem text immediately when method changes
             const probText = document.getElementById('problem-text');
             if (probText) probText.innerHTML = tabs[state.tab].problemTemplate(state.selectedOption);
             resetAnimation();
@@ -587,7 +585,6 @@
             state.resultNum = res;
         }
 
-        // --- Visualization ---
         function updateVisuals() {
             const num = state.inputNumber;
             let strNum = num.toString();
@@ -595,9 +592,13 @@
             
             calculateLogic(); 
 
-            // 1. Reset blinking from ALL boxes
+            // FIX: Reset all styles properly, preserving marker class if needed, or just relying on ID
             document.querySelectorAll('.digit-box').forEach(b => {
-                b.classList.remove('blink-yellow');
+                // Determine if it is a result box or input box based on ID
+                const isResult = b.id.startsWith('out-');
+                let cls = "digit-box w-full h-10 md:h-14 border-2 rounded-lg md:rounded-xl flex items-center justify-center text-lg md:text-2xl font-black bg-white border-slate-200 text-slate-700";
+                if(isResult) cls += " res-digit-box";
+                b.className = cls;
             });
 
             const stage = state.stage;
@@ -612,8 +613,6 @@
             const probDisp = document.getElementById('problem-display');
             const probText = document.getElementById('problem-text');
             
-            const resBoxes = document.querySelectorAll('.res-digit-box');
-            
             // Fill Input
             PLACES.forEach(p => {
                 const box = document.getElementById(`in-${p.val}`);
@@ -625,7 +624,14 @@
                 const box = document.getElementById(`in-${p}`);
                 if (box) box.innerText = digit;
             }
-            if (stage === 0) resBoxes.forEach(b => b.innerText = ""); 
+            
+            // Clear Result Grid explicitly if stage 0
+            if (stage === 0) {
+                PLACES.forEach(p => {
+                    const box = document.getElementById(`out-${p.val}`);
+                    if(box) box.innerText = "";
+                });
+            }
 
             // Problem Display
             if (stage === 0) {
@@ -674,7 +680,6 @@
                         msgText.innerHTML = `<span class="text-xl font-black text-green-600">切り捨て</span>だから...<br>問答無用で、下の位は 0 にするよ！`;
                         msgBox.className = "speech-bubble message-box w-full flex-grow bg-green-50 border-2 border-green-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-green-400";
                     } else {
-                        // Ceil
                         if (state.isRoundUp) { 
                             msgText.innerHTML = `<span class="text-xl font-black text-orange-600">切り上げ</span>だから...<br>下に数字があるなら 1 つ繰り上げるよ！`;
                         } else {
@@ -683,7 +688,6 @@
                         msgBox.className = "speech-bubble message-box w-full flex-grow bg-orange-50 border-2 border-orange-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-orange-400";
                     }
                 } else {
-                    // Steps 1-3 logic
                     if (state.isRoundUp) {
                         msgText.innerHTML = `${checkDigit} は <span class="text-2xl font-black text-orange-500">5以上</span> だから...<br>切り上げだね！`;
                         msgBox.className = "speech-bubble message-box w-full flex-grow bg-orange-50 border-2 border-orange-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-orange-400";
@@ -695,7 +699,6 @@
 
             } else if (stage === 3) {
                 const boundary = (state.tab === 4) ? opt : checkPlace * 10;
-                
                 PLACES.forEach(p => {
                     if (p.val < boundary) {
                         const rBox = document.getElementById(`out-${p.val}`);
