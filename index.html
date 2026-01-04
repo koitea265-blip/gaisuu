@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>がい数たんけん隊 - ロボ先生と学ぶ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #fdf2f8; }
+        ::-webkit-scrollbar-thumb { background: #f472b6; border-radius: 10px; }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
+        }
+
+        /* --- Animations --- */
+        .bounce-hover:hover {
+            transform: translateY(-5px);
+        }
+        
+        .robot-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .blink-yellow {
+            background-color: #fef08a !important; 
+            border-color: #eab308 !important;
+            color: #854d0e !important;
+            transform: scale(1.1);
+            z-index: 20;
+            box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.5);
+            animation: pulse-yellow 1s infinite;
+        }
+        @keyframes pulse-yellow {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(234, 179, 8, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+        }
+
+        .drop-in { animation: drop-in-anim 0.5s forwards; }
+        @keyframes drop-in-anim {
+            0% { transform: translateY(-20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        /* --- Tab Styles --- */
+        .step-tab {
+            transition: all 0.2s ease-out;
+            border-radius: 0.75rem 0.75rem 0 0;
+            font-size: 0.9rem;
+        }
+        .step-tab.active {
+            background-color: white;
+            color: #7e22ce; 
+            font-weight: 800;
+            border-top: 4px solid #a855f7; 
+            border-left: 1px solid #e2e8f0; 
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid white; 
+            z-index: 20;
+            padding: 0.75rem 1.5rem;
+            margin-bottom: -1px; 
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .step-tab.inactive {
+            background-color: #f3e8ff; 
+            color: #a855f7; 
+            font-weight: 700;
+            border: 1px solid transparent;
+            z-index: 10;
+            padding: 0.5rem 1.5rem;
+            margin-top: 0.25rem; 
+            opacity: 0.7;
+        }
+        .step-tab.inactive:hover { background-color: #e9d5ff; opacity: 1; }
+        
+        .home-tab {
+            background-color: #f1f5f9; /* Slate-100 */
+            color: #64748b; /* Slate-500 */
+            font-weight: 700;
+            border: 1px solid transparent;
+            margin-left: auto; /* Push to right */
+            margin-top: 0.25rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+        .home-tab:hover { background-color: #e2e8f0; color: #475569; }
+
+        /* --- Speech Bubble --- */
+        .speech-bubble { position: relative; }
+        .speech-bubble::after {
+            content: ''; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+            border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 12px solid inherit;
+            filter: drop-shadow(1px 0 0 rgba(0,0,0,0.05));
+        }
+        .speech-bubble::before {
+            content: ''; position: absolute; right: -9px; top: 50%; transform: translateY(-50%);
+            border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 10px solid white;
+            z-index: 1;
+        }
+        .bg-blue-50.speech-bubble::before { border-left-color: #eff6ff; }
+        .bg-orange-50.speech-bubble::before { border-left-color: #fff7ed; }
+        .bg-yellow-50.speech-bubble::before { border-left-color: #fefce8; }
+        .bg-pink-50.speech-bubble::before { border-left-color: #fdf2f8; }
+        .bg-green-50.speech-bubble::before { border-left-color: #f0fdf4; }
+
+        .problem-board {
+            background-image: radial-gradient(#f0f9ff 2px, transparent 2px);
+            background-size: 16px 16px;
+        }
+        
+        /* Cover Card Gradients */
+        .card-grad-1 { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
+        .card-grad-2 { background: linear-gradient(135deg, #fdf4ff 0%, #fce7f3 100%); border-color: #fbcfe8; }
+        .card-grad-3 { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0; }
+        .card-grad-4 { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-color: #fed7aa; }
+    </style>
+</head>
+<body class="bg-yellow-50 text-slate-700 selection:bg-yellow-200 min-h-screen">
+
+    <!-- Header -->
+    <nav class="bg-white border-b-4 border-yellow-300 sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="showCover()">
+                <span class="text-2xl">🚀</span>
+                <h1 class="text-xl font-extrabold text-pink-500 tracking-wider">がい数たんけん隊</h1>
+            </div>
+            <button onclick="showCover()" class="text-xs font-bold text-slate-400 hover:text-pink-500 transition">
+                TOPへ
+            </button>
+        </div>
+    </nav>
+
+    <!-- === VIEW 1: COVER PAGE === -->
+    <section id="cover-view" class="py-10 px-4 flex flex-col items-center">
+        <div class="container max-w-5xl">
+            
+            <!-- Hero -->
+            <div class="text-center mb-12 relative">
+                <div class="inline-block relative z-10">
+                    <span class="block text-sm font-bold text-slate-500 mb-2 tracking-widest">小学4年生 算数</span>
+                    <h2 class="text-4xl md:text-6xl font-black text-slate-800 mb-4 drop-shadow-sm">
+                        がい数たんけん隊
+                    </h2>
+                    <p class="text-lg md:text-xl font-bold text-pink-500 bg-white inline-block px-4 py-1 rounded-full shadow-sm border border-pink-100">
+                        大きな数のがい数の表し方をロボ先生と学ぼう
+                    </p>
+                </div>
+                <!-- Robot Decoration -->
+                <div class="robot-float absolute -right-4 top-0 md:right-20 md:-top-4 opacity-20 md:opacity-100 pointer-events-none">
+                    <div class="text-8xl filter drop-shadow-xl transform rotate-12">🤖</div>
+                </div>
+            </div>
+
+            <!-- Menu Grid -->
+            <div class="grid md:grid-cols-2 gap-6 w-full">
+                
+                <!-- Card 1 -->
+                <button onclick="startLearning(1)" class="card-grad-1 text-left p-6 rounded-3xl border-4 shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-blue-500 text-white font-black px-3 py-1 rounded-lg text-sm">ステップ ①</span>
+                        <span class="text-4xl group-hover:scale-110 transition">🎯</span>
+                    </div>
+                    <h3 class="text-2xl font-black text-blue-900 mb-2">〇の位を四捨五入</h3>
+                    <p class="text-sm font-bold text-blue-700 leading-relaxed mb-4">
+                        「四捨五入」のきほん。<br>
+                        どの位の数字を見て判断するのかな？
+                    </p>
+                    <div class="inline-block bg-white text-blue-600 font-bold px-4 py-2 rounded-full text-sm shadow-sm group-hover:bg-blue-600 group-hover:text-white transition">
+                        やってみる ▶
+                    </div>
+                </button>
+
+                <!-- Card 2 -->
+                <button onclick="startLearning(2)" class="card-grad-2 text-left p-6 rounded-3xl border-4 shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-pink-500 text-white font-black px-3 py-1 rounded-lg text-sm">ステップ ②</span>
+                        <span class="text-4xl group-hover:scale-110 transition">📍</span>
+                    </div>
+                    <h3 class="text-2xl font-black text-pink-900 mb-2">〇の位までのがい数</h3>
+                    <p class="text-sm font-bold text-pink-700 leading-relaxed mb-4">
+                        「千の位まで」残したい時は、<br>
+                        どこの位を見ればいいのかな？
+                    </p>
+                    <div class="inline-block bg-white text-pink-600 font-bold px-4 py-2 rounded-full text-sm shadow-sm group-hover:bg-pink-600 group-hover:text-white transition">
+                        やってみる ▶
+                    </div>
+                </button>
+
+                <!-- Card 3 -->
+                <button onclick="startLearning(3)" class="card-grad-3 text-left p-6 rounded-3xl border-4 shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-green-500 text-white font-black px-3 py-1 rounded-lg text-sm">ステップ ③</span>
+                        <span class="text-4xl group-hover:scale-110 transition">👀</span>
+                    </div>
+                    <h3 class="text-2xl font-black text-green-900 mb-2">上から〇けた</h3>
+                    <p class="text-sm font-bold text-green-700 leading-relaxed mb-4">
+                        「上から2けた」のがい数にするには、<br>
+                        3番目の数字に注目するよ！
+                    </p>
+                    <div class="inline-block bg-white text-green-600 font-bold px-4 py-2 rounded-full text-sm shadow-sm group-hover:bg-green-600 group-hover:text-white transition">
+                        やってみる ▶
+                    </div>
+                </button>
+
+                <!-- Card 4 -->
+                <button onclick="startLearning(4)" class="card-grad-4 text-left p-6 rounded-3xl border-4 shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-orange-500 text-white font-black px-3 py-1 rounded-lg text-sm">ステップ ④</span>
+                        <span class="text-4xl group-hover:scale-110 transition">✂️</span>
+                    </div>
+                    <h3 class="text-2xl font-black text-orange-900 mb-2">切り捨て・切り上げ</h3>
+                    <p class="text-sm font-bold text-orange-700 leading-relaxed mb-4">
+                        ぜんぶ0にする「切り捨て」と、<br>
+                        1つ上げる「切り上げ」を使い分けよう。
+                    </p>
+                    <div class="inline-block bg-white text-orange-600 font-bold px-4 py-2 rounded-full text-sm shadow-sm group-hover:bg-orange-600 group-hover:text-white transition">
+                        やってみる ▶
+                    </div>
+                </button>
+
+            </div>
+        </div>
+    </section>
+
+
+    <!-- === VIEW 2: LEARNING PAGE === -->
+    <section id="learning-view" class="py-6 px-2 md:px-4 bg-purple-50 min-h-[95vh] flex-col items-center hidden">
+        <div class="container mx-auto max-w-6xl">
+            
+            <!-- Tabs -->
+            <div class="flex items-end gap-1 px-4 w-full max-w-6xl mx-auto overflow-x-auto hide-scrollbar">
+                <button onclick="setTab(1)" id="tab-1" class="step-tab whitespace-nowrap active">① 四捨五入</button>
+                <button onclick="setTab(2)" id="tab-2" class="step-tab whitespace-nowrap inactive">② 〇の位まで</button>
+                <button onclick="setTab(3)" id="tab-3" class="step-tab whitespace-nowrap inactive">③ 上から〇けた</button>
+                <button onclick="setTab(4)" id="tab-4" class="step-tab whitespace-nowrap inactive">④ 切り捨て・上げ</button>
+                
+                <!-- Back to Home Tab -->
+                <button onclick="showCover()" class="home-tab whitespace-nowrap ml-auto flex items-center gap-1">
+                    <span>🏠</span> 表紙にもどる
+                </button>
+            </div>
+
+            <!-- Content Box -->
+            <div class="bg-white w-full max-w-6xl p-6 rounded-b-3xl rounded-tr-3xl rounded-tl-3xl shadow-xl border border-slate-200 relative z-10" style="border-top-left-radius: 0;">
+                
+                <!-- 1. Input & Controls -->
+                <div class="grid md:grid-cols-2 gap-6 mb-8 items-start">
+                    <!-- Input Area -->
+                    <div class="bg-purple-50 p-4 rounded-xl border-2 border-purple-100">
+                        <label class="block text-sm font-extrabold text-purple-900 mb-2">① 数字を入力してね</label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" id="inputNumber" value="1234567" 
+                                class="w-3/5 min-w-0 text-2xl md:text-3xl font-black text-slate-700 p-3 bg-white border-2 border-slate-300 rounded-xl focus:ring-4 focus:ring-purple-300 outline-none text-right shadow-inner" 
+                                placeholder="0" inputmode="numeric">
+                            
+                            <button onclick="clearInput()" class="flex-shrink-0 bg-white hover:bg-slate-50 text-slate-500 border-2 border-slate-300 px-3 py-2 rounded-xl font-bold text-xs md:text-sm shadow-sm transition hover:border-slate-400 flex flex-col items-center justify-center whitespace-nowrap h-full">
+                                <span class="text-lg leading-none mb-1">✏️</span>
+                                数字を<br>かえる
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="bg-slate-50 p-4 rounded-xl border-2 border-slate-100 h-full flex flex-col justify-between">
+                        <div>
+                            <label id="option-label" class="block text-sm font-extrabold text-slate-700 mb-2">
+                                どの位を四捨五入しますか？
+                            </label>
+                            <div id="options-container" class="grid grid-cols-2 gap-2 mb-4">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Step 4 Method Selector -->
+                        <div id="method-selector" class="hidden border-t-2 border-slate-200 pt-3 mt-1">
+                            <label class="block text-sm font-extrabold text-slate-700 mb-2">方法をえらんでね</label>
+                            <div class="flex gap-2">
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="method" value="floor" class="peer hidden" checked onchange="updateMethod()">
+                                    <div class="bg-white peer-checked:bg-green-100 peer-checked:border-green-500 peer-checked:text-green-700 border-2 border-slate-300 rounded-lg p-2 text-center font-bold text-slate-500 transition shadow-sm">
+                                        ✂️ 切り捨て
+                                    </div>
+                                </label>
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="method" value="ceil" class="peer hidden" onchange="updateMethod()">
+                                    <div class="bg-white peer-checked:bg-orange-100 peer-checked:border-orange-500 peer-checked:text-orange-700 border-2 border-slate-300 rounded-lg p-2 text-center font-bold text-slate-500 transition shadow-sm">
+                                        🪜 切り上げ
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. THE MACHINE VISUALIZATION -->
+                <div class="relative bg-slate-50 rounded-3xl p-6 border-4 border-slate-200 shadow-inner mb-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-center">
+                        
+                        <!-- LEFT COLUMN: The Main Flow -->
+                        <div class="flex flex-col gap-6 w-full">
+                            
+                            <!-- A. Input Row -->
+                            <div class="flex flex-col md:flex-row items-center md:items-stretch gap-4">
+                                <div id="problem-display" class="problem-board hidden opacity-0 transition-opacity duration-500 w-full md:w-48 bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg shadow-sm flex flex-col justify-center shrink-0">
+                                    <span class="text-xs font-bold text-blue-400 mb-1">もんだい</span>
+                                    <p id="problem-text" class="text-lg font-black text-slate-700 leading-tight">
+                                        <!-- Text inserted by JS -->
+                                    </p>
+                                </div>
+                                <div class="relative flex-grow w-full">
+                                    <div class="text-xs font-bold text-slate-400 mb-1 text-center md:text-left pl-2">もとの数字</div>
+                                    <div class="flex justify-center md:justify-start gap-1" id="grid-input"></div>
+                                </div>
+                            </div>
+
+                            <!-- B. Message Row -->
+                            <div class="flex flex-col md:flex-row items-center gap-4 min-h-[100px]">
+                                <div class="hidden md:block w-48 shrink-0"></div>
+                                <div id="message-box" class="speech-bubble message-box w-full flex-grow bg-white border-2 border-blue-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-blue-300">
+                                    <p id="message-text" class="text-lg font-bold text-slate-700 leading-snug">
+                                        「スタート」ボタンを押してね！
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- C. Result Row -->
+                            <div class="flex flex-col md:flex-row items-center gap-4">
+                                <div class="hidden md:block w-48 shrink-0"></div>
+                                <div class="relative flex-grow w-full">
+                                    <div class="text-xs font-bold text-blue-400 mb-1 text-center md:text-left pl-2">変身した数字（がい数）</div>
+                                    <div class="flex justify-center md:justify-start gap-1" id="grid-result"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Button Row -->
+                            <div class="flex justify-center md:justify-end mt-2">
+                                <button id="action-btn" onclick="nextStage()" class="bg-pink-500 hover:bg-pink-600 text-white text-xl font-black px-12 py-3 rounded-full shadow-lg transform transition active:scale-95 border-b-4 border-pink-700 active:border-b-0 active:translate-y-1">
+                                    スタート ▶
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN: Robot -->
+                        <div class="flex flex-col items-center justify-center robot-float shrink-0 px-4">
+                            <div class="text-8xl filter drop-shadow-lg transform scale-x-[-1]">🤖</div>
+                            <span class="text-sm font-bold text-slate-400 mt-2 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">ロボ先生</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Result Text & Chart (Only for Step 4 method selection awareness, others hidden as requested for simplicity in previous turns? 
+                     Correction: User asked to remove Answer/Chart for Step 2 & 3. 
+                     Step 1 hidden. Step 4 can show if needed, but let's hide all for consistency unless requested.
+                     Wait, Step 4 has "Method Selector" but chart requirement was "no answer/chart for 2&3".
+                     Let's hide the chart/answer panel entirely for now based on "answer and graph are not needed" request for 2&3, and 1 was already hidden.
+                     I'll keep the logic but hide the HTML panel by default.
+                -->
+                <!-- <div id="extra-info-panel" class="grid md:grid-cols-2 gap-6 hidden">...</div> --> 
+                <!-- Completely removed visible chart panel based on simplification requests for specific steps. -->
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-yellow-300 text-yellow-900 py-4 text-center mt-auto">
+        <p class="font-bold text-sm">がい数たんけん隊 - ロボ先生と学ぼう</p>
+    </footer>
+
+    <script>
+        // --- Constants ---
+        const PLACES = [
+            { val: 1000000, label: "百万" },
+            { val: 100000, label: "十万" },
+            { val: 10000, label: "一万" },
+            { val: 1000, label: "千" },
+            { val: 100, label: "百" },
+            { val: 10, label: "十" },
+            { val: 1, label: "一" }
+        ];
+
+        // --- State ---
+        const state = {
+            view: 'cover', // 'cover' or 'learning'
+            tab: 1,
+            inputNumber: 1234567,
+            selectedOption: 10000,
+            method: 'floor', 
+            stage: 0, 
+            checkPlaceVal: 0,
+            isRoundUp: false,
+            resultNum: 0
+        };
+
+        // --- Tab Logic ---
+        const tabs = {
+            1: {
+                label: "どの位を四捨五入する？",
+                getOptions: () => [100000, 10000, 1000, 100, 10, 1],
+                getCheckPlace: (opt) => opt, 
+                problemTemplate: (opt) => `<span class="text-pink-600">${PLACES.find(p=>p.val===opt).label.replace("の位","")}の位</span>を<br>四捨五入します`,
+                getLookMessage: (checkLabel, checkDigit, opt) => `四捨五入する<br><span class="text-2xl font-black text-yellow-600">${checkLabel}の位</span>（${checkDigit}）を見るんだ！`
+            },
+            2: {
+                label: "どの位までのがい数にする？",
+                getOptions: () => [1000000, 100000, 10000, 1000, 100, 10],
+                getCheckPlace: (opt) => opt / 10,
+                problemTemplate: (opt) => `<span class="text-pink-600">${PLACES.find(p=>p.val===opt).label.replace("の位","")}の位</span>までの<br>がい数にします`,
+                getLookMessage: (checkLabel, checkDigit, opt) => {
+                    const targetLabel = PLACES.find(p=>p.val===opt).label.replace("の位","");
+                    return `${targetLabel}の位までのがい数にするから<br><span class="text-2xl font-black text-yellow-600">${checkLabel}の位</span>（${checkDigit}）を見るんだ！`;
+                }
+            },
+            3: {
+                label: "上から何けたのがい数にする？",
+                getOptions: () => [1, 2, 3],
+                getCheckPlace: (opt, num) => {
+                    const len = num.toString().length;
+                    if (len <= opt) return 1;
+                    return Math.pow(10, len - opt - 1);
+                },
+                problemTemplate: (opt) => `上から<span class="text-pink-600">${opt}けた</span>の<br>がい数にします`,
+                getLookMessage: (checkLabel, checkDigit, opt) => `上から${opt}けたのがい数にするから<br>${opt+1}けた目の<span class="text-2xl font-black text-yellow-600">${checkLabel}の位</span>（${checkDigit}）を見るんだ！`
+            },
+            4: {
+                label: "どの位までのがい数にする？",
+                getOptions: (num) => {
+                    const len = num.toString().length;
+                    const opts = [];
+                    for(let i=2; i<=5; i++) {
+                        const power = len - i;
+                        if(power >= 0) opts.push(Math.pow(10, power));
+                    }
+                    return opts.length > 0 ? opts : [10000, 1000, 100]; 
+                },
+                getCheckPlace: (opt) => opt / 10,
+                problemTemplate: (opt) => {
+                    const methodText = state.method === 'floor' ? '切り捨て' : '切り上げ';
+                    return `<span class="text-pink-600">${PLACES.find(p=>p.val===opt).label.replace("の位","")}の位</span>までで<br>${methodText}します`;
+                },
+                getLookMessage: (checkLabel, checkDigit, opt) => {
+                    return ""; // Handled dynamically
+                }
+            }
+        };
+
+        // --- Init ---
+        window.addEventListener('DOMContentLoaded', () => {
+            renderGridsStructure();
+            // Start at Cover
+            showCover();
+
+            const input = document.getElementById('inputNumber');
+            input.addEventListener('input', (e) => {
+                let val = e.target.value;
+                if(val.length > 7) { val = val.slice(0, 7); e.target.value = val; }
+                state.inputNumber = parseInt(val) || 0;
+                
+                if(state.tab === 4) {
+                    renderOptions();
+                    const opts = tabs[4].getOptions(state.inputNumber);
+                    if(!opts.includes(state.selectedOption)) {
+                        state.selectedOption = opts[0];
+                        renderOptions();
+                    }
+                }
+                resetAnimation(); 
+            });
+        });
+
+        // --- View Navigation ---
+        function showCover() {
+            document.getElementById('cover-view').classList.remove('hidden');
+            document.getElementById('cover-view').classList.add('flex');
+            document.getElementById('learning-view').classList.add('hidden');
+            document.getElementById('learning-view').classList.remove('flex');
+            window.scrollTo(0,0);
+        }
+
+        function startLearning(step) {
+            document.getElementById('cover-view').classList.add('hidden');
+            document.getElementById('cover-view').classList.remove('flex');
+            document.getElementById('learning-view').classList.remove('hidden');
+            document.getElementById('learning-view').classList.add('flex');
+            setTab(step);
+            window.scrollTo(0,0);
+        }
+
+        // --- Tab & Controls ---
+        function setTab(n) {
+            state.tab = n;
+            [1,2,3,4].forEach(i => {
+                const el = document.getElementById(`tab-${i}`);
+                if (i === n) {
+                    el.className = "step-tab px-6 whitespace-nowrap active";
+                } else {
+                    el.className = "step-tab px-6 whitespace-nowrap inactive";
+                }
+            });
+            
+            document.getElementById('option-label').textContent = tabs[n].label;
+            
+            const methodSel = document.getElementById('method-selector');
+            if (n === 4) methodSel.classList.remove('hidden');
+            else methodSel.classList.add('hidden');
+
+            // Init options
+            const opts = (n === 4) ? tabs[n].getOptions(state.inputNumber) : tabs[n].getOptions();
+            if (n === 3) state.selectedOption = 2;
+            else if (n === 4) state.selectedOption = opts[0];
+            else state.selectedOption = 1000;
+
+            renderOptions();
+            resetAnimation();
+        }
+
+        function updateMethod() {
+            const radios = document.getElementsByName('method');
+            for (const r of radios) { if(r.checked) state.method = r.value; }
+            // Re-render problem text immediately when method changes
+            const probText = document.getElementById('problem-text');
+            if (probText) probText.innerHTML = tabs[state.tab].problemTemplate(state.selectedOption);
+            resetAnimation();
+        }
+
+        function resetAnimation() {
+            state.stage = 0;
+            updateVisuals();
+        }
+
+        function nextStage() {
+            state.stage++;
+            if (state.stage > 4) state.stage = 0; 
+            updateVisuals();
+        }
+
+        function clearInput() {
+            const input = document.getElementById('inputNumber');
+            input.value = "";
+            input.focus();
+            state.inputNumber = 0;
+            if(state.tab === 4) renderOptions();
+            resetAnimation();
+        }
+
+        function calculateLogic() {
+            const num = state.inputNumber;
+            const opt = state.selectedOption;
+            const tabConf = tabs[state.tab];
+            
+            let checkPlace = 1;
+            if (state.tab === 3) {
+                 checkPlace = tabConf.getCheckPlace(opt, num);
+            } else {
+                 checkPlace = tabConf.getCheckPlace(opt);
+            }
+            state.checkPlaceVal = checkPlace;
+
+            let divisor = 1;
+            if (state.tab === 1) divisor = opt * 10;
+            else if (state.tab === 2) divisor = opt;
+            else if (state.tab === 3) {
+                const len = num.toString().length;
+                divisor = Math.pow(10, len - opt);
+            } else {
+                divisor = opt; 
+            }
+            
+            let res = 0;
+            if (state.tab === 4) {
+                if (state.method === 'floor') {
+                    res = Math.floor(num / divisor) * divisor;
+                    state.isRoundUp = false;
+                } else {
+                    res = Math.ceil(num / divisor) * divisor;
+                    state.isRoundUp = (res > num);
+                }
+            } else {
+                res = Math.round(num / divisor) * divisor;
+                const checkDigit = Math.floor((num / checkPlace) % 10);
+                state.isRoundUp = (checkDigit >= 5);
+            }
+            state.resultNum = res;
+        }
+
+        // --- Visualization ---
+        function updateVisuals() {
+            const num = state.inputNumber;
+            let strNum = num.toString();
+            if (num === 0 && document.getElementById('inputNumber').value === "") strNum = "";
+            
+            calculateLogic(); 
+
+            const stage = state.stage;
+            const checkPlace = state.checkPlaceVal;
+            const checkPlaceLabel = PLACES.find(p => p.val === checkPlace)?.label || "その";
+            const checkDigit = Math.floor((num / checkPlace) % 10);
+            const opt = state.selectedOption;
+            
+            const msgBox = document.getElementById('message-box');
+            const msgText = document.getElementById('message-text');
+            const btn = document.getElementById('action-btn');
+            const probDisp = document.getElementById('problem-display');
+            const probText = document.getElementById('problem-text');
+            
+            const resBoxes = document.querySelectorAll('.res-digit-box');
+            
+            // Fill Input
+            PLACES.forEach(p => {
+                const box = document.getElementById(`in-${p.val}`);
+                if(box) box.innerText = "";
+            });
+            for (let i = 0; i < strNum.length; i++) {
+                const digit = strNum[strNum.length - 1 - i];
+                const p = Math.pow(10, i);
+                const box = document.getElementById(`in-${p}`);
+                if (box) box.innerText = digit;
+            }
+            if (stage === 0) resBoxes.forEach(b => b.innerText = ""); 
+
+            // Problem Display
+            if (stage === 0) {
+                probDisp.classList.remove('hidden', 'opacity-0');
+                probDisp.classList.add('flex', 'opacity-100');
+                
+                const labelObj = PLACES.find(p => p.val === opt);
+                if (state.tab === 4 && (!labelObj || num === 0)) {
+                     probText.innerHTML = "数字を入力してね";
+                } else {
+                     probText.innerHTML = tabs[state.tab].problemTemplate(state.selectedOption);
+                }
+            } else {
+                probDisp.classList.remove('hidden', 'opacity-0');
+                probDisp.classList.add('flex', 'opacity-100');
+            }
+
+            // Highlight Persistence
+            const checkPlaceBox = document.getElementById(`in-${checkPlace}`);
+            if (stage >= 1 && checkPlaceBox) {
+                checkPlaceBox.classList.add('blink-yellow');
+            } else if (stage === 0 && checkPlaceBox) {
+                checkPlaceBox.classList.remove('blink-yellow');
+            }
+
+            // Messages & Colors
+            if (stage === 0) {
+                msgText.textContent = "準備ができたら「スタート」を押してね！";
+                msgBox.className = "speech-bubble message-box w-full flex-grow bg-white border-2 border-blue-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-blue-300";
+                btn.textContent = "スタート ▶";
+                btn.className = "bg-pink-500 hover:bg-pink-600 text-white text-xl font-black px-12 py-3 rounded-full shadow-lg transition transform active:scale-95";
+                
+            } else if (stage === 1) {
+                if (state.tab === 4) {
+                    const targetLabel = PLACES.find(p=>p.val===opt)?.label.replace("の位","") || "";
+                    const methodText = state.method === 'floor' ? '切り捨て' : '切り上げ';
+                    msgText.innerHTML = `${targetLabel}の位までで${methodText}するから<br><span class="text-2xl font-black text-yellow-600">${checkPlaceLabel}の位</span>（${checkDigit}）を見るんだ！`;
+                    msgBox.className = "speech-bubble message-box w-full flex-grow bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-yellow-400";
+                } else {
+                    msgText.innerHTML = tabs[state.tab].getLookMessage(checkPlaceLabel, checkDigit, opt);
+                    msgBox.className = "speech-bubble message-box w-full flex-grow bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-yellow-400";
+                }
+                btn.textContent = "次へ ▶";
+                
+            } else if (stage === 2) {
+                if (state.tab === 4) {
+                    if (state.method === 'floor') {
+                        msgText.innerHTML = `<span class="text-xl font-black text-green-600">切り捨て</span>だから...<br>問答無用で、下の位は 0 にするよ！`;
+                        msgBox.className = "speech-bubble message-box w-full flex-grow bg-green-50 border-2 border-green-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-green-400";
+                    } else {
+                        if (state.isRoundUp) { 
+                            msgText.innerHTML = `<span class="text-xl font-black text-orange-600">切り上げ</span>だから...<br>下に数字があるなら 1 つ繰り上げるよ！`;
+                        } else {
+                            msgText.innerHTML = `<span class="text-xl font-black text-orange-600">切り上げ</span>だけど...<br>下に数字がないから そのままだよ！`;
+                        }
+                        msgBox.className = "speech-bubble message-box w-full flex-grow bg-orange-50 border-2 border-orange-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-orange-400";
+                    }
+                } else {
+                    if (state.isRoundUp) {
+                        msgText.innerHTML = `${checkDigit} は <span class="text-2xl font-black text-orange-500">5以上</span> だから...<br>切り上げだね！`;
+                        msgBox.className = "speech-bubble message-box w-full flex-grow bg-orange-50 border-2 border-orange-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-orange-400";
+                    } else {
+                        msgText.innerHTML = `${checkDigit} は <span class="text-2xl font-black text-blue-500">4以下</span> だから...<br>切り捨てだね！`;
+                        msgBox.className = "speech-bubble message-box w-full flex-grow bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-blue-400";
+                    }
+                }
+
+            } else if (stage === 3) {
+                const boundary = (state.tab === 4) ? opt : checkPlace * 10;
+                PLACES.forEach(p => {
+                    if (p.val < boundary) {
+                        const rBox = document.getElementById(`out-${p.val}`);
+                        if (rBox) {
+                            rBox.innerText = "0";
+                            rBox.classList.add('drop-in', 'text-slate-700');
+                        }
+                    }
+                });
+
+                if (state.tab === 4) {
+                    if (state.method === 'floor') {
+                        msgText.innerHTML = `指定した位より下を<br>バサッと <span class="text-xl font-black text-green-500">0</span> にしました！`;
+                    } else {
+                        if (state.isRoundUp) {
+                            msgText.innerHTML = `下の数字を 0 にして...<br>上の位に <span class="text-xl font-black text-orange-500">+1</span> しました！`;
+                        } else {
+                            msgText.innerHTML = `下の数字を 0 にしました！<br>（繰り上がりなし）`;
+                        }
+                    }
+                    msgBox.className = "speech-bubble message-box w-full flex-grow bg-white border-2 border-slate-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-slate-400";
+                } else {
+                    if (state.isRoundUp) {
+                        msgText.innerHTML = `${checkPlaceLabel}の位より下を 0 にして...<br>一つ上の位に <span class="text-xl font-black text-orange-500">+1</span> するよ！`;
+                    } else {
+                        msgText.innerHTML = `${checkPlaceLabel}の位より下は、<br>ぜんぶ <span class="text-xl font-black text-blue-500">0</span> にしちゃおう！`;
+                    }
+                    msgBox.className = "speech-bubble message-box w-full flex-grow bg-white border-2 border-slate-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-slate-400";
+                }
+
+            } else if (stage === 4) {
+                const boundary = (state.tab === 4) ? opt : checkPlace * 10;
+                const resStr = state.resultNum.toString();
+                
+                for (let i = 0; i < resStr.length; i++) {
+                    const digit = resStr[resStr.length - 1 - i];
+                    const p = Math.pow(10, i);
+                    const rBox = document.getElementById(`out-${p}`);
+                    
+                    if (rBox) {
+                        rBox.innerText = digit;
+                        if (p >= boundary) {
+                            rBox.classList.add('drop-in', 'font-black', 'text-slate-700');
+                            const inDigit = Math.floor((num / p) % 10);
+                            if (parseInt(digit) !== inDigit) {
+                                rBox.classList.add('bg-orange-100', 'text-orange-600');
+                            }
+                        } else {
+                            rBox.classList.add('text-slate-700'); 
+                        }
+                    }
+                }
+
+                msgText.innerHTML = `上の位はそのまま降りてくるよ！<br><span class="text-3xl font-black text-pink-500">かんせい！</span>`;
+                msgBox.className = "speech-bubble message-box w-full flex-grow bg-pink-50 border-2 border-pink-200 rounded-2xl p-4 text-center shadow-md flex items-center justify-center border-l-4 border-l-pink-400";
+                btn.textContent = "もう一度やる ↺";
+                btn.className = "bg-slate-500 hover:bg-slate-600 text-white text-xl font-black px-12 py-3 rounded-full shadow-lg transition transform active:scale-95";
+            }
+        }
+
+        // --- Renderers ---
+        function renderGridsStructure() {
+            const inputContainer = document.getElementById('grid-input');
+            const resultContainer = document.getElementById('grid-result');
+            inputContainer.innerHTML = '';
+            resultContainer.innerHTML = '';
+
+            const createBox = (idPrefix, isResult) => {
+                return PLACES.map(p => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = "flex flex-col items-center flex-1 max-w-[3rem]";
+                    
+                    const label = document.createElement('span');
+                    label.className = "text-[10px] font-bold text-slate-400 mb-1";
+                    label.innerText = p.label.replace("の位","");
+                    
+                    const box = document.createElement('div');
+                    box.id = `${idPrefix}-${p.val}`;
+                    let cls = "digit-box w-full h-10 md:h-14 border-2 rounded-lg md:rounded-xl flex items-center justify-center text-lg md:text-2xl font-black bg-white border-slate-200 text-slate-700";
+                    if (isResult) {
+                        box.className = cls.replace("digit-box", "res-digit-box digit-box"); 
+                    } else {
+                        box.className = cls;
+                    }
+                    wrapper.appendChild(label);
+                    wrapper.appendChild(box);
+                    return wrapper;
+                });
+            };
+            createBox('in', false).forEach(e => inputContainer.appendChild(e));
+            createBox('out', true).forEach(e => resultContainer.appendChild(e));
+        }
+
+        function renderOptions() {
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            const conf = tabs[state.tab];
+            const opts = (state.tab === 4) ? conf.getOptions(state.inputNumber) : conf.getOptions();
+            
+            opts.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                let text = "";
+                if(state.tab === 3) {
+                    text = `${opt}けた`;
+                } else if(state.tab === 4) {
+                    const placeLabel = PLACES.find(p => p.val === opt)?.label + "の位";
+                    text = `${placeLabel} (上から${index+2}けた)`;
+                } else {
+                    text = PLACES.find(p => p.val === opt)?.label + "の位";
+                }
+
+                btn.className = `p-2 rounded-lg border-2 text-sm font-bold transition ${state.selectedOption === opt ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'}`;
+                btn.textContent = text;
+                btn.onclick = () => {
+                    state.selectedOption = opt;
+                    renderOptions(); 
+                    resetAnimation();
+                };
+                container.appendChild(btn);
+            });
+        }
+    </script>
+</body>
+</html>
